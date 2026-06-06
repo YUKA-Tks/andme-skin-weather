@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>＆me 今日の肌情報</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --rose:#c4788a;--rose-light:#fdf0f3;--rose-mid:#f0b8c8;--rose-dark:#8a3a52;
+  --blush:#f7dde6;--cream:#fdf8f5;
+  --text:#2a1a20;--text-2:#7a5060;--text-3:#b89aa4;
+  --surface:rgba(255,255,255,0.88);--border:rgba(196,120,138,0.18);
+  --r:18px;--r-sm:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--text);min-height:100vh;overflow-x:hidden}
+.bg-deco{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.bg-deco::before{content:'';position:absolute;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,#f7c5d5 0%,transparent 70%);top:-120px;right:-120px;opacity:.45}
+.bg-deco::after{content:'';position:absolute;width:380px;height:380px;border-radius:50%;background:radial-gradient(circle,#fde8c0 0%,transparent 70%);bottom:-80px;left:-80px;opacity:.35}
+.bg-petal{position:absolute;font-size:120px;opacity:.04;top:38%;left:50%;transform:translate(-50%,-50%);pointer-events:none;user-select:none}
+.wrap{position:relative;z-index:1;max-width:480px;margin:0 auto;padding:0 16px 60px}
+
+/* ヘッダー */
+.header{text-align:center;padding:32px 0 20px}
+.logo{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:500;letter-spacing:.15em;color:var(--text);margin-bottom:4px}
+.logo span{color:var(--rose)}
+.logo-sub{font-size:10px;letter-spacing:.25em;color:var(--text-3);font-weight:300;text-transform:uppercase}
+.date-label{margin-top:14px;font-size:13px;color:var(--text-2);letter-spacing:.06em}
+
+/* ── 場所選択UI ── */
+.location-selector{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  padding:16px;margin-bottom:16px;backdrop-filter:blur(8px);
+  animation:fadeUp .3s ease both;
+}
+.loc-selector-title{font-size:11px;font-weight:500;color:var(--text-3);letter-spacing:.14em;text-transform:uppercase;margin-bottom:12px}
+.loc-tabs{display:flex;gap:8px;margin-bottom:12px}
+.loc-tab{
+  flex:1;padding:9px 6px;border-radius:var(--r-sm);border:1px solid var(--border);
+  background:transparent;font-size:12px;font-family:'Noto Sans JP',sans-serif;
+  color:var(--text-2);cursor:pointer;transition:all .15s;text-align:center;
+}
+.loc-tab.active{background:var(--rose);color:#fff;border-color:var(--rose)}
+.loc-presets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.loc-preset-btn{
+  padding:10px 6px;border-radius:var(--r-sm);border:1px solid var(--border);
+  background:transparent;font-size:12px;font-family:'Noto Sans JP',sans-serif;
+  color:var(--text-2);cursor:pointer;transition:all .15s;text-align:center;line-height:1.4;
+}
+.loc-preset-btn:hover{border-color:var(--rose-mid);background:var(--rose-light)}
+.loc-preset-btn.selected{background:var(--rose-light);border-color:var(--rose);color:var(--rose-dark);font-weight:500}
+.loc-preset-btn small{display:block;font-size:10px;color:var(--text-3);margin-top:2px}
+.loc-preset-btn.selected small{color:var(--rose)}
+
+/* 場所検索 */
+.loc-search-wrap{display:flex;gap:8px;margin-top:4px}
+.loc-search-input{
+  flex:1;padding:10px 14px;border-radius:var(--r-sm);border:1px solid var(--border);
+  background:#fff;font-size:13px;font-family:'Noto Sans JP',sans-serif;color:var(--text);
+  outline:none;
+}
+.loc-search-input:focus{border-color:var(--rose)}
+.loc-search-btn{
+  padding:10px 16px;background:var(--rose);color:#fff;border:none;
+  border-radius:var(--r-sm);font-size:13px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;
+  white-space:nowrap;
+}
+.loc-search-suggestions{
+  margin-top:6px;background:#fff;border:1px solid var(--border);border-radius:var(--r-sm);
+  overflow:hidden;display:none;
+}
+.loc-suggestion-item{
+  padding:10px 14px;font-size:13px;color:var(--text-2);cursor:pointer;
+  border-bottom:1px solid var(--border);transition:background .1s;
+}
+.loc-suggestion-item:last-child{border-bottom:none}
+.loc-suggestion-item:hover{background:var(--rose-light)}
+
+/* ピン固定バッジ */
+.pin-fixed-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  background:var(--rose-light);border:1px solid var(--rose-mid);border-radius:10px;
+  padding:3px 10px;font-size:11px;color:var(--rose-dark);margin-top:10px;
+}
+.pin-toggle{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-top:10px;padding-top:10px;border-top:1px solid var(--border);
+}
+.pin-toggle-label{font-size:12px;color:var(--text-2)}
+.toggle-switch{position:relative;width:40px;height:22px;cursor:pointer}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{
+  position:absolute;inset:0;background:#ddd;border-radius:11px;transition:.2s;
+}
+.toggle-slider::before{
+  content:'';position:absolute;height:16px;width:16px;left:3px;bottom:3px;
+  background:#fff;border-radius:50%;transition:.2s;
+}
+.toggle-switch input:checked+.toggle-slider{background:var(--rose)}
+.toggle-switch input:checked+.toggle-slider::before{transform:translateX(18px)}
+
+/* 場所バー */
+.location-bar{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  background:var(--surface);border:1px solid var(--border);border-radius:30px;
+  padding:8px 16px;margin-bottom:16px;backdrop-filter:blur(8px);
+  font-size:13px;color:var(--text-2);animation:fadeUp .4s ease both;
+  cursor:pointer;transition:background .15s;
+}
+.location-bar:hover{background:rgba(255,255,255,.95)}
+.location-bar-left{display:flex;align-items:center;gap:6px}
+.location-bar .pin{font-size:15px}
+.location-bar-change{font-size:11px;color:var(--rose);font-weight:500}
+
+/* ロード・エラー */
+.loading{text-align:center;padding:60px 20px}
+.loading-ring{width:48px;height:48px;border-radius:50%;border:2px solid var(--rose-mid);border-top-color:var(--rose);animation:spin 1s linear infinite;margin:0 auto 20px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading p{font-size:13px;color:var(--text-3)}
+.error-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:24px;text-align:center}
+.error-box p{font-size:13px;color:var(--text-2);line-height:1.8;margin-bottom:16px}
+.retry-btn{padding:10px 24px;background:var(--rose);color:#fff;border:none;border-radius:var(--r-sm);font-size:13px;font-family:'Noto Sans JP',sans-serif;cursor:pointer}
+
+/* 天気ヘッド */
+.weather-head{background:linear-gradient(135deg,#e8849a 0%,#c4788a 40%,#a85a72 100%);border-radius:var(--r);padding:16px 18px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden;animation:fadeUp .4s .05s ease both}
+.weather-head::before{content:'';position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.08);top:-60px;right:-60px}
+.weather-head-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.weather-head-left{display:flex;align-items:center;gap:10px}
+.weather-icon-big{font-size:44px;line-height:1;filter:drop-shadow(0 2px 8px rgba(0,0,0,.15));flex-shrink:0}
+.weather-desc{font-size:14px;font-weight:500;letter-spacing:.06em}
+.weather-head-right{text-align:right;flex-shrink:0}
+.temp-main{font-family:'Noto Sans JP',sans-serif;font-size:42px;font-weight:300;line-height:1;letter-spacing:-.02em}
+.weather-sub-stats{display:flex;align-items:center;justify-content:flex-end;gap:4px;font-size:11px;opacity:.8;margin-top:3px;white-space:nowrap}
+.stat-sep{opacity:.5}
+.weather-condition-bar{font-size:11px;opacity:.85;line-height:1.7;padding-top:10px;border-top:1px solid rgba(255,255,255,.2)}
+
+/* スキンスコア */
+.skin-score-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:16px;backdrop-filter:blur(8px);animation:fadeUp .4s .1s ease both}
+.score-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.score-title{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:500;color:var(--text);letter-spacing:.05em}
+.score-badge{font-family:'Noto Sans JP',sans-serif;font-size:32px;font-weight:300;color:var(--rose);line-height:1}
+.score-badge small{font-size:14px;color:var(--text-3)}
+.score-meter{height:6px;background:var(--blush);border-radius:3px;overflow:hidden;margin-bottom:8px}
+.score-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--rose-mid),var(--rose));transition:width 1s cubic-bezier(.4,0,.2,1)}
+.score-msg{font-size:12px;color:var(--text-2);line-height:1.6}
+
+/* 指数グリッド */
+.index-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.index-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 14px;backdrop-filter:blur(8px);position:relative;overflow:hidden}
+.index-card:nth-child(1){animation:fadeUp .4s .15s ease both}
+.index-card:nth-child(2){animation:fadeUp .4s .2s ease both}
+.index-card:nth-child(3){animation:fadeUp .4s .25s ease both}
+.index-card:nth-child(4){animation:fadeUp .4s .3s ease both}
+.index-card.wide{grid-column:1/-1}
+.index-card::after{content:attr(data-emoji);position:absolute;right:-4px;bottom:-8px;font-size:48px;opacity:.08;pointer-events:none}
+.index-label{font-size:10px;font-weight:500;color:var(--text-3);letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px}
+.index-value{font-family:'Noto Sans JP',sans-serif;font-size:34px;font-weight:300;line-height:1;margin-bottom:4px}
+.index-unit{font-size:12px;color:var(--text-3);margin-left:2px}
+.index-level{display:inline-block;font-size:11px;font-weight:500;padding:3px 10px;border-radius:8px;margin-bottom:8px}
+.lv-good{background:#e8f5ee;color:#2d6a4f}
+.lv-caution{background:#fff4e0;color:#b86a00}
+.lv-bad{background:#fde8ed;color:#c0293e}
+.lv-verybad{background:#f0d6db;color:#8a0a1e}
+.index-tip{font-size:11px;color:var(--text-2);line-height:1.6}
+
+/* アドバイス */
+.advice-card{background:linear-gradient(135deg,var(--rose-light) 0%,#fff5f8 100%);border:1px solid var(--rose-mid);border-radius:var(--r);padding:20px;margin-bottom:16px;animation:fadeUp .4s .35s ease both}
+.advice-title{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:500;color:var(--rose-dark);margin-bottom:14px;letter-spacing:.05em}
+.advice-list{display:flex;flex-direction:column;gap:10px}
+.advice-item{display:flex;gap:12px;align-items:flex-start}
+.advice-text{flex:1;font-size:13px;color:var(--text-2);line-height:1.75}
+
+/* サロンバナー */
+.salon-banner{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;display:flex;align-items:center;gap:16px;animation:fadeUp .4s .4s ease both;cursor:pointer;transition:opacity .15s}
+.salon-banner:hover{opacity:.88}
+.salon-banner-icon{font-size:32px;flex-shrink:0}
+.salon-banner-text p{font-size:11px;color:var(--text-3);letter-spacing:.1em;margin-bottom:4px}
+.salon-banner-text h3{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:500;color:var(--text);letter-spacing:.04em;margin-bottom:4px}
+.salon-banner-text small{font-size:11px;color:var(--text-3)}
+.salon-banner-arrow{margin-left:auto;color:var(--rose);font-size:18px;flex-shrink:0}
+.update-note{text-align:center;font-size:11px;color:var(--text-3);margin-top:20px;letter-spacing:.06em}
+.index-detail{font-size:11px;color:var(--text-3);line-height:1.5;margin-top:5px;padding-top:5px;border-top:1px solid var(--border)}
+.advice-time-note{font-size:11px;color:var(--text-3);margin-bottom:14px;letter-spacing:.04em}
+.advice-icon{width:32px;height:32px;border-radius:50%;background:var(--rose-light);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;margin-top:2px}
+.advice-time-label{font-size:11px;font-weight:500;color:var(--rose);margin-bottom:4px;letter-spacing:.06em}
+.tomorrow-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px;animation:fadeUp .4s .38s ease both}
+.tomorrow-title{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:500;color:var(--text);margin-bottom:12px;letter-spacing:.04em}
+.tomorrow-grid{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.tomorrow-item{display:flex;align-items:center;gap:6px}
+.tomorrow-icon{font-size:16px}
+.tomorrow-label{font-size:11px;color:var(--text-3);margin-right:2px}
+.tomorrow-val{font-size:12px;font-weight:500;color:var(--text)}
+.tomorrow-msg{font-size:12px;color:var(--text-2);line-height:1.7;padding-top:10px;border-top:1px solid var(--border)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="bg-deco"><div class="bg-petal">🌸</div></div>
+<div class="wrap">
+  <div class="header">
+    <div class="logo">&amp;<span>me</span></div>
+    <div class="logo-sub">Today's Skin Report</div>
+    <div class="date-label" id="date-label"></div>
+  </div>
+  <div id="location-ui"></div>
+  <div id="main"></div>
+</div>
+
+<script>
+// ── 定数 ──
+const WMO = {0:'快晴',1:'晴れ',2:'一部曇り',3:'曇り',45:'霧',48:'霧氷',51:'霧雨',53:'霧雨',55:'強い霧雨',61:'小雨',63:'雨',65:'大雨',71:'小雪',73:'雪',75:'大雪',80:'にわか雨',81:'雨',82:'激しい雨',95:'雷雨',96:'雹を伴う雷雨',99:'激しい雷雨'};
+const PRESETS = [
+  {label:'吉祥寺',sub:'東京都武蔵野市', lat:35.7018, lon:139.5803},
+  {label:'高崎',  sub:'群馬県高崎市',   lat:36.3231, lon:139.0035},
+  {label:'神戸元町',sub:'兵庫県神戸市',  lat:34.6888, lon:135.1830},
+];
+const STORAGE_KEY = 'andme_location_pref';
+const now = new Date();
+const days = ['日','月','火','水','木','金','土'];
+document.getElementById('date-label').textContent =
+  `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日（${days[now.getDay()]}）`;
+
+// ── ストレージ（localStorageなければメモリ）──
+let _mem = {};
+function storeGet(k){ try{ return localStorage.getItem(k); }catch(e){ return _mem[k]||null; } }
+function storeSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){ _mem[k]=v; } }
+
+// ── 状態管理 ──
+let currentMode = 'gps'; // 'gps' | 'preset' | 'search'
+let selectedPreset = null;
+let searchResult = null; // {label, lat, lon}
+let isPinFixed = false;
+let searchSuggestions = [];
+
+function loadSavedPref(){
+  try{
+    const saved = storeGet(STORAGE_KEY);
+    if(!saved) return null;
+    return JSON.parse(saved);
+  }catch(e){ return null; }
+}
+function savePref(pref){
+  storeSet(STORAGE_KEY, JSON.stringify(pref));
+}
+function clearPref(){
+  try{ localStorage.removeItem(STORAGE_KEY); }catch(e){ delete _mem[STORAGE_KEY]; }
+}
+
+// ── 場所選択UI ──
+function renderLocationUI(showContent=true){
+  const ui = document.getElementById('location-ui');
+  ui.innerHTML = `
+    <div class="location-selector">
+      <div class="loc-selector-title">📍 場所の設定</div>
+      <div class="loc-tabs">
+        <button class="loc-tab ${currentMode==='gps'?'active':''}" onclick="switchMode('gps')">現在地</button>
+        <button class="loc-tab ${currentMode==='preset'?'active':''}" onclick="switchMode('preset')">店舗から選ぶ</button>
+        <button class="loc-tab ${currentMode==='search'?'active':''}" onclick="switchMode('search')">場所を検索</button>
+      </div>
+
+      ${currentMode==='gps' ? `
+        <div style="font-size:12px;color:var(--text-2);line-height:1.7;margin-bottom:10px">
+          スマホのGPS位置情報を使って現在地の肌情報を表示します。
+        </div>
+      ` : ''}
+
+      ${currentMode==='preset' ? `
+        <div class="loc-presets">
+          ${PRESETS.map((p,i)=>`
+            <button class="loc-preset-btn ${selectedPreset===i?'selected':''}" onclick="selectPreset(${i})">
+              ${p.label}<small>${p.sub}</small>
+            </button>
+          `).join('')}
+        </div>
+      ` : ''}
+
+      ${currentMode==='search' ? `
+        <div class="loc-search-wrap">
+          <input class="loc-search-input" id="search-input" type="text"
+            placeholder="例：渋谷、大阪梅田..."
+            value="${searchResult?searchResult.label:''}"
+            onkeydown="if(event.key==='Enter')doSearch()">
+          <button class="loc-search-btn" onclick="doSearch()">検索</button>
+        </div>
+        <div class="loc-search-suggestions" id="suggestions"></div>
+        ${searchResult ? `<div class="pin-fixed-badge">✅ ${searchResult.label} を選択中</div>` : ''}
+      ` : ''}
+
+      <div class="pin-toggle">
+        <div class="pin-toggle-label">📌 この場所を固定する（次回も同じ場所で表示）</div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="pin-toggle" ${isPinFixed?'checked':''} onchange="togglePin(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      ${isPinFixed ? `<div style="font-size:11px;color:var(--rose);margin-top:6px">📌 固定中 — 次回開いたときも同じ場所で表示されます</div>` : ''}
+
+      <button onclick="applyLocation()" style="margin-top:12px;width:100%;padding:12px;background:var(--rose);color:#fff;border:none;border-radius:var(--r-sm);font-size:14px;font-weight:500;font-family:'Noto Sans JP',sans-serif;cursor:pointer;">
+        この場所で肌情報を見る →
+      </button>
+    </div>
+  `;
+}
+
+function switchMode(mode){
+  currentMode = mode;
+  renderLocationUI();
+}
+
+function selectPreset(i){
+  selectedPreset = i;
+  renderLocationUI();
+}
+
+// ── 場所検索（Nominatim）──
+// Nominatimのaddressフィールドから読みやすい地名を生成
+function formatAddress(d){
+  const a = d.address || {};
+  const type = d.type || d.class || '';
+
+  // メインの地名
+  const main =
+    a.city      ||
+    a.town      ||
+    a.village   ||
+    a.county    ||
+    a.state     ||
+    a.region    ||
+    d.display_name.split(',')[0];
+
+  // サブ（都道府県）
+  const sub = a.state || a.region || '';
+
+  // 種別ラベル
+  const typeMap = {
+    administrative:'行政区域', city:'市', town:'町', village:'村',
+    suburb:'地区', neighbourhood:'地区', quarter:'地区',
+    municipality:'市区町村', county:'郡', state:'都道府県',
+  };
+  const typeLabel = typeMap[type] || typeMap[a.addresstype] || '';
+
+  return { main, sub, typeLabel };
+}
+
+async function doSearch(){
+  const q = document.getElementById('search-input')?.value?.trim();
+  if(!q) return;
+  try{
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=8&addressdetails=1&accept-language=ja&countrycodes=jp`;
+    const res = await fetch(url, {headers:{'Accept-Language':'ja'}});
+    const data = await res.json();
+
+    // 重複排除：main+subが同じものは最初の1件だけ残す
+    const seen = new Set();
+    const filtered = data.filter(d => {
+      const {main, sub} = formatAddress(d);
+      const key = `${main}|${sub}`;
+      if(seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 5);
+
+    searchSuggestions = filtered.map(d => {
+      const {main, sub, typeLabel} = formatAddress(d);
+      return {
+        label: main,
+        sub: sub && sub !== main ? sub : '',
+        typeLabel,
+        lat: parseFloat(d.lat),
+        lon: parseFloat(d.lon)
+      };
+    });
+
+    const sug = document.getElementById('suggestions');
+    if(!sug) return;
+    if(searchSuggestions.length===0){
+      sug.style.display='block';
+      sug.innerHTML=`<div class="loc-suggestion-item" style="color:var(--text-3)">見つかりませんでした。別のキーワードをお試しください。</div>`;
+    } else {
+      sug.style.display='block';
+      sug.innerHTML = searchSuggestions.map((s,i)=>`
+        <div class="loc-suggestion-item" onclick="pickSuggestion(${i})">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <div>
+              <span style="font-size:13px;color:var(--text)">${s.label}</span>
+              ${s.sub ? `<span style="font-size:11px;color:var(--text-3);margin-left:6px">${s.sub}</span>` : ''}
+            </div>
+            ${s.typeLabel ? `<span style="font-size:10px;color:var(--text-3);background:var(--rose-light);padding:2px 8px;border-radius:8px;flex-shrink:0">${s.typeLabel}</span>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+  }catch(e){
+    console.error(e);
+  }
+}
+
+function pickSuggestion(i){
+  const s = searchSuggestions[i];
+  searchResult = {
+    label: s.sub ? `${s.label}（${s.sub}）` : s.label,
+    lat: s.lat,
+    lon: s.lon
+  };
+  const sug = document.getElementById('suggestions');
+  if(sug) sug.style.display='none';
+  renderLocationUI();
+}
+
+// ── ピン固定トグル ──
+function togglePin(checked){
+  isPinFixed = checked;
+  renderLocationUI();
+}
+
+// ── 場所を確定して天気取得 ──
+// 固定あり / なし どちらも前回の場所を保存する
+// 固定あり → 次回起動時に選択UIをスキップして即表示
+// 固定なし → 次回起動時に前回の場所で即表示 + 上部に「変更」ボタン
+function applyLocation(){
+  if(currentMode==='gps'){
+    savePref({mode:'gps', pinned: isPinFixed});
+    loadByGPS();
+    return;
+  }
+  if(currentMode==='preset'){
+    if(selectedPreset===null){ alert('店舗を選んでください'); return; }
+    const p = PRESETS[selectedPreset];
+    savePref({mode:'preset', idx:selectedPreset, pinned: isPinFixed});
+    fetchAndRender(p.lat, p.lon, p.label);
+    return;
+  }
+  if(currentMode==='search'){
+    if(!searchResult){ alert('場所を検索・選択してください'); return; }
+    savePref({mode:'search', result:searchResult, pinned: isPinFixed});
+    fetchAndRender(searchResult.lat, searchResult.lon, searchResult.label);
+  }
+}
+
+// ── 場所バー（確定後の上部表示）──
+function renderLocationBar(cityName){
+  const locUi = document.getElementById('location-ui');
+  locUi.innerHTML = `
+    <div class="location-bar" onclick="reopenSelector()">
+      <div class="location-bar-left">
+        <span class="pin">📍</span>
+        <span>${cityName}</span>
+        ${isPinFixed?'<span style="font-size:10px;background:var(--rose-light);color:var(--rose-dark);border:1px solid var(--rose-mid);border-radius:8px;padding:2px 8px;">固定中</span>':''}
+      </div>
+      <span class="location-bar-change">変更 ›</span>
+    </div>
+  `;
+}
+
+function reopenSelector(){
+  renderLocationUI();
+  document.getElementById('main').innerHTML = '';
+}
+
+// ── GPS取得 ──
+function loadByGPS(){
+  document.getElementById('main').innerHTML = `<div class="loading"><div class="loading-ring"></div><p>現在地の肌情報を取得中...</p></div>`;
+  if(!navigator.geolocation){
+    showError('位置情報が使用できません。<br>場所を選択してください。'); return;
+  }
+  navigator.geolocation.getCurrentPosition(async(pos)=>{
+    const lat = pos.coords.latitude, lon = pos.coords.longitude;
+    try{
+      const geoUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ja`;
+      const geoRes = await fetch(geoUrl,{headers:{'Accept-Language':'ja'}});
+      const geoData = await geoRes.json();
+      const addr = geoData.address||{};
+      const city = addr.city||addr.town||addr.village||addr.county||'現在地';
+      fetchAndRender(lat, lon, city);
+    }catch(e){ fetchAndRender(lat, lon, '現在地'); }
+  },(err)=>{
+    showError('位置情報の取得が許可されていません。<br>「場所を選択」または「店舗から選ぶ」をお試しください。');
+    renderLocationUI();
+  },{timeout:10000});
+}
+
+// ── 天気API呼び出し（現在値＋翌日予報） ──
+async function fetchAndRender(lat, lon, cityName){
+  document.getElementById('main').innerHTML = `<div class="loading"><div class="loading-ring"></div><p>${cityName}の肌情報を取得中...</p></div>`;
+  renderLocationBar(cityName);
+  try{
+    // 現在値＋翌日予報（uv_index_max・weathercode）を同時取得
+    const wUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,uv_index&daily=temperature_2m_max,temperature_2m_min,uv_index_max,weather_code&timezone=Asia%2FTokyo&forecast_days=2`;
+    const wRes = await fetch(wUrl);
+    const wData = await wRes.json();
+    const cur = wData.current, daily = wData.daily;
+    const desc = WMO[cur.weather_code]||'天気不明';
+    // 翌日予報
+    const tomorrowUvi    = daily.uv_index_max?.[1] ?? null;
+    const tomorrowWCode  = daily.weather_code?.[1] ?? null;
+    const tomorrowDesc   = tomorrowWCode!=null ? (WMO[tomorrowWCode]||'天気不明') : null;
+
+    let aqi=50, tomorrowAqi=50;
+    try{
+      const aUrl=`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi&hourly=us_aqi&timezone=Asia%2FTokyo&forecast_days=2`;
+      const aRes=await fetch(aUrl);
+      const aData=await aRes.json();
+      aqi=Math.round(aData.current?.us_aqi??50);
+      // 翌日の平均AQI（24〜47時間目の平均）
+      const hourly = aData.hourly?.us_aqi||[];
+      const tomorrowHours = hourly.slice(24,48).filter(v=>v!=null);
+      if(tomorrowHours.length>0) tomorrowAqi = Math.round(tomorrowHours.reduce((a,b)=>a+b,0)/tomorrowHours.length);
+    }catch(e){}
+
+    render({
+      city:cityName,
+      temp:cur.temperature_2m,
+      tempMin:daily.temperature_2m_min[0],
+      tempMax:daily.temperature_2m_max[0],
+      humidity:cur.relative_humidity_2m,
+      desc, uvi:cur.uv_index??3, aqi,
+      weatherCode:cur.weather_code??0,
+      tomorrowUvi, tomorrowDesc, tomorrowAqi
+    });
+  }catch(e){
+    showError('天気情報の取得に失敗しました。<br>通信環境をご確認の上、もう一度お試しください。');
+  }
+}
+
+// ── 指数ロジック ──
+
+// UV：Open-MeteoのUVIは晴天理論値のため体感より低く出やすい。
+// 時刻・雲量補正をかけて実体感に近い値を算出する。
+function calcAdjustedUVI(rawUvi, weatherCode, hour){
+  // 雲補正：曇り・雨は減衰
+  let cloudFactor = 1.0;
+  if([3,45,48].includes(weatherCode)) cloudFactor = 0.5;        // 曇り・霧
+  else if([2].includes(weatherCode)) cloudFactor = 0.75;        // 一部曇り
+  else if(weatherCode>=51 && weatherCode<=82) cloudFactor=0.3;  // 雨
+  else if(weatherCode>=95) cloudFactor=0.2;                     // 雷雨
+
+  // 時刻補正：Open-Meteoは「現在値」だが日中ピークに近いため
+  // 朝夕（7時以前・17時以降）は実際より低く補正
+  let timeFactor = 1.0;
+  if(hour <= 7 || hour >= 17) timeFactor = 0.6;
+  else if(hour <= 9 || hour >= 15) timeFactor = 0.85;
+
+  // 日本では体感UVが若干強めなので係数1.2
+  return rawUvi * cloudFactor * timeFactor * 1.2;
+}
+
+function uvLevel(v, rawV){
+  if(v<=1)return{lv:'good',label:'ほぼなし',
+    tip:'室内でも窓ガラス越しにUVは少しずつ届いています。UV効果のある下地やSPF20程度の軽い日焼け止めを習慣にできると、シミ・くすみ予防につながりますよ☀️'};
+  if(v<=3)return{lv:'good',label:'弱い',
+    tip:'曇りでも紫外線は60〜80%届いています。SPF30の日焼け止めを朝に塗っておくだけで、じわじわ蓄積するダメージをしっかり予防できますよ🌿'};
+  if(v<=5)return{lv:'caution',label:'やや強い',
+    tip:'SPF50の日焼け止めを朝に塗って、昼過ぎにもう一度塗り直せると安心です。ビタミンC配合タイプならUVケアと美白ケアが同時にできて◎'};
+  if(v<=7)return{lv:'bad',label:'強い',
+    tip:'SPF50+・PA++++の日焼け止めを取り入れてみてください。日傘や帽子も合わせると、シミ・色素沈着の予防がぐっと上がります。2〜3時間おきの塗り直しも意識してみてください🌂'};
+  if(v<=9)return{lv:'verybad',label:'非常に強い',
+    tip:'10〜14時の外出はできるだけ短くできると安心です。UVカットウェアと日傘で肌を守って、帰宅後はビタミンC美容液でアフターケアもぜひ💛'};
+  return{lv:'verybad',label:'極めて強い',
+    tip:'今日は特に強い紫外線の日です。外出の際はしっかり防御してあげてください。帰宅後すぐに洗顔して、ビタミンC誘導体・トラネキサム酸配合の美容液でメラニンの定着を予防してあげましょう✨'};
+}
+
+function dryLevel(h,t){
+  const score = h - (t - 20) * 1.8;
+  if(score>=60)return{
+    lv:'good',label:'うるおい',
+    tip:'水分が蒸発しにくいうるおいやすい環境です。美容液や集中ケアの浸透も良好な日なので、ビタミンC美容液やナイトクリームなど、ひと手間プラスしてみてください🌸',
+    detail:'保湿のゴールデンタイム。集中ケアを取り入れるのにぴったりな日です。'
+  };
+  if(score>=42)return{
+    lv:'caution',label:'やや乾燥',
+    tip:'朝と夜、化粧水を重ね付けして水分をしっかり補給してあげると、夕方の乾燥感がぐっと変わりますよ💧',
+    detail:'日中も乾燥を感じやすい日。ミスト化粧水を持ち歩くのがおすすめです。'
+  };
+  if(score>=25)return{
+    lv:'bad',label:'乾燥注意',
+    tip:'セラミド配合の保湿剤で朝晩ダブル保湿できると、バリア機能を守りやすくなります。室内の加湿も意識してみてください🌿',
+    detail:'バリア機能が低下しやすい環境です。重ね付け保湿がおすすめ。'
+  };
+  return{
+    lv:'verybad',label:'かなり乾燥',
+    tip:'洗顔後すぐにセラミド＋ヒアルロン酸の保湿剤を取り入れてあげてください。時間が経つほど乾燥が進むので、できるだけ素早くケアしてあげると安心です🧴',
+    detail:'肌の水分が急速に蒸発する環境です。加湿器とこまめな保湿で乗り切りましょう。'
+  };
+}
+
+function pollenLevel(m,w){
+  const ps=[2,3,4,5].includes(m);
+  const isSunny = w.includes('晴')||w.includes('快晴');
+  if(!ps)return{lv:'good',label:'少ない',
+    tip:'花粉の少ない時期です。美白や保湿の集中ケアをたっぷり楽しんでみてください🌸',detail:''};
+  if(isSunny)return{lv:'bad',label:'多い',
+    tip:'帰宅後すぐにぬるま湯でやさしく洗顔してあげると、花粉による炎症・赤みの予防になります。アラントイン配合の洗顔料だと洗いながら鎮静もできますよ🌿',
+    detail:'晴れた日は花粉が多く飛びやすい日です。バリアクリームを使うと肌に付着しにくくなります。'};
+  return{lv:'caution',label:'やや多い',
+    tip:'花粉シーズン中なので、帰宅後の洗顔を丁寧にできると安心です。セラミド配合のバリアクリームで肌を守ってあげると◎',
+    detail:'花粉シーズン中はバリア機能の強化を意識してみてください。'};
+}
+
+function pm25Level(v){
+  if(v<=30) return{lv:'good',label:'良い',
+    tip:'空気がきれいな日です。スキンケア成分が浸透しやすい環境なので、美容液や集中ケアを取り入れてみてください✨',detail:''};
+  if(v<=60) return{lv:'caution',label:'普通',
+    tip:'帰宅後は泡立てた洗顔料でやさしく洗顔してあげると、毛穴に汚れが残りにくくなります。透明感キープのために丁寧な洗顔を習慣にしてみてください🌿',detail:''};
+  if(v<=120)return{lv:'bad',label:'悪い',
+    tip:'帰宅後はクレンジングオイルでメイクと汚れをやさしく浮かせてから、泡洗顔で洗い流すダブル洗顔がおすすめです。その後にセラミド保湿でバリアを整えてあげましょう🧴',
+    detail:'PM2.5の微粒子が毛穴に入り込みやすい日です。透明感ダウンの前に、夜の洗顔を丁寧に。'};
+  return{lv:'verybad',label:'非常に悪い',
+    tip:'外出時はマスクで肌を守れると安心です。帰宅後はクレンジングオイル→泡洗顔のダブル洗顔で毛穴の汚れをやさしくオフして、ナイアシンアミド配合の美容液で透明感をケアしてあげましょう✨',detail:''};
+}
+
+// スコアは環境ストレスの総量（100から引く方式）
+function skinScore(adjUvi,h,t,aqi,m,desc){
+  let s=100;
+  // UV
+  if(adjUvi>9)s-=28;else if(adjUvi>7)s-=22;else if(adjUvi>5)s-=14;else if(adjUvi>3)s-=7;
+  // 乾燥
+  const d=h-(t-20)*1.8;
+  if(d<25)s-=25;else if(d<42)s-=14;else if(d<60)s-=6;
+  // 大気汚染
+  if(aqi>120)s-=20;else if(aqi>60)s-=10;else if(aqi>30)s-=4;
+  // 花粉
+  const pol=pollenLevel(m,desc);
+  if(pol.lv==='bad')s-=14;else if(pol.lv==='caution')s-=7;
+  // 気温差ストレス（真夏・真冬）
+  if(t>=32||t<=5)s-=8;else if(t>=28||t<=10)s-=4;
+  return Math.max(10,Math.min(100,s));
+}
+
+// スコアに応じた「今日の肌に何が起きているか」メッセージ
+function skinConditionInfo(score, dry, uv, pol, pm, t){
+  // 主要因を特定
+  const risks=[];
+  if(uv.lv==='bad'||uv.lv==='verybad') risks.push('uv');
+  if(dry.lv==='bad'||dry.lv==='verybad') risks.push('dry');
+  if(pol.lv==='bad'||pol.lv==='caution') risks.push('pol');
+  if(pm.lv==='bad'||pm.lv==='verybad') risks.push('pm');
+  if(t>=30) risks.push('heat');
+  if(t<=10) risks.push('cold');
+
+  if(score>=85){
+    return{
+      label:'✨ 美肌チャンス日',
+      color:'#c47a8a',
+      msg:'今日は肌への外的ストレスが少なく、スキンケア成分が浸透しやすい環境です。ビタミンC美容液や集中保湿など、水光肌・透明感アップのスペシャルケアを取り入れるのに最適な日です。'
+    };
+  }
+  if(score>=70){
+    return{
+      label:'🌿 ケアで整えられる日',
+      color:'#3a7a52',
+      msg:'多少の環境ストレスはありますが、しっかりケアすれば水光肌をキープできる日です。朝晩の保湿を丁寧に行いながら、今日の環境に合ったケアを意識してみてください。'
+    };
+  }
+  if(score>=50){
+    const mainCause = risks[0]==='uv' ? 'UVによるメラニン生成・色素沈着が起きやすい' : risks[0]==='dry' ? '乾燥でバリアが低下しくすみや毛穴が目立ちやすい' : risks[0]==='pol' ? '花粉が肌に付着し炎症・赤みが出やすい' : 'PM2.5で毛穴が詰まり透明感が低下しやすい';
+    return{
+      label:'⚠️ 肌ストレスがある日',
+      color:'#8a6a00',
+      msg:`今日は${mainCause}環境です。透明感・水光肌を守るために、普段より少しだけ丁寧にケアしてあげると、お肌を守りやすくなります。外出後のケアも意識してみてください。`
+    };
+  }
+  const mainCause2 = risks[0]==='uv' ? '紫外線が非常に強く、シミ・くすみの原因になるメラニンが生成されやすい' : risks[0]==='dry' ? '乾燥によるバリア機能の低下が著しく、肌荒れ・くすみ・毛穴目立ちのリスクが高い' : 'さまざまな外的刺激が重なり肌への負担が大きい';
+  return{
+    label:'🔴 集中ケアが必要な日',
+    color:'#8a3a52',
+    msg:`今日は${mainCause2}状況です。朝・昼・夜とこまめにケアしてあげてください。美白・バリア補修成分を取り入れると、お肌を守りやすくなりますよ。`
+  };
+}
+
+// 成分まで踏み込んだアドバイスを時間帯・状況別に生成
+function buildAdvice(uv, dry, pol, pm, t, adjUvi){
+  const h = now.getHours();
+  const isMorning = h>=5 && h<10;
+  const isDay     = h>=10 && h<17;
+  const isEvening = h>=17 && h<21;
+  const isNight   = h>=21 || h<5;
+
+  const items=[];
+
+  // ─ 朝のアドバイス ─
+  if(isMorning){
+    if(dry.lv==='bad'||dry.lv==='verybad'){
+      items.push({
+        icon:'🧴', time:'朝の保湿ケア',
+        text:`洗顔後2分以内が勝負です。まず「ヒアルロン酸・プロテオグリカン」配合の化粧水を手のひらで押さえながら2〜3回重ね付け。次に「セラミド・ナイアシンアミド」配合の美容液で水分を閉じ込め、最後に「スクワラン・シアバター」配合の乳液またはクリームで蓋をして。今日は乾燥${dry.label}なのでこの3ステップが特に大切ですよ。`
+      });
+    } else {
+      items.push({
+        icon:'🧴', time:'朝の保湿ケア',
+        text:'洗顔後すぐに「ヒアルロン酸・グリセリン・アミノ酸」配合の化粧水でしっかり水分補給を。その後「セラミド」配合の乳液で保湿膜を作ってから次のステップへ。朝の保湿がその日1日の肌の調子を左右しますよ🌸'
+      });
+    }
+    if(adjUvi>5){
+      items.push({
+        icon:'☀️', time:'日焼け止め',
+        text:`外出30分前に日焼け止めを。選ぶなら「SPF50+・PA++++」で「ノンケミカル（酸化亜鉛・酸化チタン配合）」タイプが肌への刺激が少なくおすすめです。「ビタミンC誘導体・ナイアシンアミド」配合タイプならUVカットと美白ケアを同時にできて◎ 首・デコルテも忘れずに。`
+      });
+    } else if(adjUvi>3){
+      items.push({
+        icon:'☀️', time:'日焼け止め',
+        text:'曇りでも紫外線は60〜80%届きます。「SPF30〜50・PA+++」の日焼け止めを朝に塗っておくだけで、じわじわ蓄積するシミ・くすみダメージを予防できますよ。化粧下地にUV機能が入っているものを選ぶと手間が減って続けやすいです🌿'
+      });
+    } else {
+      items.push({
+        icon:'☀️', time:'日焼け止め',
+        text:'UV量は少なめですが、室内でも窓ガラス越しに届く紫外線が肌老化の原因になります。「SPF20〜30・PA++」程度の軽いUV下地か、「酸化亜鉛」配合のミネラルファンデで手軽にケアを習慣にしてみてください。シミ・くすみ予防につながりますよ☀️'
+      });
+    }
+  }
+
+  // ─ 日中のアドバイス ─
+  if(isDay){
+    if(adjUvi>5){
+      items.push({
+        icon:'☀️', time:'日焼け止めの塗り直し',
+        text:`現在UVが${uv.label}時間帯です。2〜3時間おきに塗り直すと色素沈着の予防になります。塗り直しには「UVカットミスト（SPF50+）」が手軽でおすすめ。スプレータイプならメイクの上からでも使えますよ。`
+      });
+    } else if(adjUvi>1){
+      items.push({
+        icon:'☀️', time:'日焼け止めの塗り直し',
+        text:`今はUV${uv.label}ですが、紫外線ダメージは少しずつ蓄積します。「SPF30のUVカットミスト」を昼に一度スプレーしておくだけで、メラニン生成の予防になりますよ。`
+      });
+    }
+    if(dry.lv!=='good'){
+      items.push({
+        icon:'💧', time:'日中の保湿補給',
+        text:'「ヒアルロン酸・コラーゲン・プロテオグリカン」配合のミスト化粧水を持ち歩いてみてください。乾燥を感じたら20cmほど離してひと吹き。メイクの上からでもOKで、透明感・水光肌キープに役立ちますよ💧'
+      });
+    }
+    if(t>=30){
+      items.push({
+        icon:'🌡', time:'高温・汗対策',
+        text:'汗でスキンケアが崩れやすい日です。汗をかいたらコットンで優しくティッシュオフして、「アミノ酸・ヒアルロン酸」配合のミストで補水を。日焼け止めは「ウォータープルーフ・アミノ酸系」タイプが崩れにくくおすすめです。'
+      });
+    }
+  }
+
+  // ─ 夕方のアドバイス ─
+  if(isEvening){
+    if(pol.lv==='bad'||pol.lv==='caution'){
+      items.push({
+        icon:'🌸', time:'帰宅後の洗顔',
+        text:'花粉が肌に残ったまま時間が経つと炎症・赤みの原因になります。帰宅後すぐにぬるま湯（36〜38℃）で洗顔を。「アミノ酸系洗顔料」は泡立ちが良くやさしく落とせます。「アラントイン・グリチルリチン酸・ツボクサエキス」配合タイプなら洗いながら鎮静もできますよ🌿'
+      });
+    }
+    if(pm.lv==='bad'||pm.lv==='verybad'){
+      items.push({
+        icon:'🌫', time:'帰宅後のダブル洗顔',
+        text:'PM2.5が多い日は通常の洗顔だけでは毛穴の汚れが落ちにくいです。①まず「オイルクレンジング（ミネラルオイル・ホホバオイル配合）」でやさしくなじませてメイクと汚れを浮かせる、②次に「アミノ酸系泡洗顔」でやさしく洗い流す、このダブル洗顔で透明感を守りましょう。'
+      });
+    }
+    if(!pol.lv.includes('bad')&&!pm.lv.includes('bad')){
+      items.push({
+        icon:'✨', time:'夕方のリセットケア',
+        text:'日中の肌ストレスをリセットする時間帯です。洗顔後に「グリチルリチン酸・アラントイン」配合の化粧水で鎮静しながら水分補給を。さらに「ナイアシンアミド・ビタミンC誘導体」配合の美容液を重ねると、くすみ・色素沈着の予防になりますよ✨'
+      });
+    }
+  }
+
+  // ─ 夜のアドバイス ─
+  if(isNight){
+    items.push({
+      icon:'🌙', time:'夜の集中ケア',
+      text:'夜22時〜深夜2時は成長ホルモンが最も多く分泌される時間帯。この時間帯に「レチノール誘導体・EGF（上皮細胞成長因子）・ペプチド」配合の美容液を取り入れると、肌の再生・コラーゲン産生を効果的にサポートできます。就寝前のスペシャルケアとして習慣にしてみてください✨'
+    });
+    if(dry.lv==='bad'||dry.lv==='verybad'){
+      items.push({
+        icon:'🧴', time:'就寝前の保湿',
+        text:`就寝中も肌から水分は蒸発し続けます。「セラミド1・3・6II・ヒアルロン酸・スクワラン」配合のナイトクリームを通常より少し多めに塗って保湿膜を作ってから眠ってみてください。翌朝のもちもち感が変わりますよ🌙`
+      });
+    }
+    if(adjUvi>5){
+      items.push({
+        icon:'☀️', time:'UVダメージのアフターケア',
+        text:'今日はUVが強い日でした。紫外線で生成されたメラニンは夜のケアで定着を防げます。「ビタミンC誘導体（アスコルビルリン酸Na）・トラネキサム酸・アルブチン」配合の美容液を今夜のケアに取り入れてみてください。シミ・くすみ予防に効果的ですよ。'
+      });
+    }
+  }
+
+  // ─ 共通（時間帯問わず有効なもの）─
+  if(t<=10&&items.length<3){
+    items.push({
+      icon:'❄️', time:'寒さ・血行ケア',
+      text:'気温が低い日は血行が悪くなりくすみ・色ムラが出やすくなります。「ビタミンE（トコフェロール）・シアバター・ホホバオイル」配合のリッチなクリームで保護を。ホットタオル（40℃程度）を顔に30秒あてると血行促進になり、透明感アップにつながりますよ◎'
+    });
+  }
+
+  return items.slice(0,4);
+}
+function weatherEmoji(d){
+  if(!d)return'🌤';
+  if(d.includes('雷'))return'⛈';if(d.includes('雪'))return'❄️';
+  if(d.includes('雨'))return'🌧';if(d.includes('曇'))return'☁️';
+  if(d.includes('晴'))return'☀️';return'🌤';
+}
+
+// ── レンダリング ──
+function render(data){
+  const{city,temp,tempMin,tempMax,humidity,desc,uvi,aqi,tomorrowUvi,tomorrowDesc,tomorrowAqi}=data;
+  const m=now.getMonth()+1;
+  const h=now.getHours();
+  const wCode = data.weatherCode||0;
+
+  const adjUvi = calcAdjustedUVI(uvi, wCode, h);
+  const uv  = uvLevel(adjUvi, uvi);
+  const dry = dryLevel(humidity,temp);
+  const pol = pollenLevel(m,desc);
+  const pm  = pm25Level(aqi);
+  const score = skinScore(adjUvi,humidity,temp,aqi,m,desc);
+  const cond  = skinConditionInfo(score,dry,uv,pol,pm,temp);
+  const advice= buildAdvice(uv,dry,pol,pm,temp,adjUvi);
+  const emoji = weatherEmoji(desc);
+
+  // 翌日予報
+  let tomorrowHtml = '';
+  if(tomorrowUvi!=null || tomorrowAqi!=null){
+    const tAdjUvi = tomorrowUvi!=null ? calcAdjustedUVI(tomorrowUvi, 0, 12) : null;
+    const tUv  = tAdjUvi!=null ? uvLevel(tAdjUvi) : null;
+    const tPm  = tomorrowAqi!=null ? pm25Level(tomorrowAqi) : null;
+    const tEmoji = tomorrowDesc ? weatherEmoji(tomorrowDesc) : '🌤';
+    tomorrowHtml = `
+      <div class="tomorrow-card">
+        <div class="tomorrow-title">明日の肌への影響予報</div>
+        <div class="tomorrow-grid">
+          <div class="tomorrow-item">
+            <span class="tomorrow-icon">${tEmoji}</span>
+            <span class="tomorrow-label">天気</span>
+            <span class="tomorrow-val">${tomorrowDesc||'—'}</span>
+          </div>
+          ${tUv ? `<div class="tomorrow-item">
+            <span class="tomorrow-icon">☀️</span>
+            <span class="tomorrow-label">UV予報</span>
+            <span class="tomorrow-val index-level lv-${tUv.lv}" style="padding:2px 10px;border-radius:8px;font-size:12px">${tUv.label}</span>
+          </div>` : ''}
+          ${tPm ? `<div class="tomorrow-item">
+            <span class="tomorrow-icon">🌫</span>
+            <span class="tomorrow-label">PM2.5予報</span>
+            <span class="tomorrow-val index-level lv-${tPm.lv}" style="padding:2px 10px;border-radius:8px;font-size:12px">${tPm.label}</span>
+          </div>` : ''}
+        </div>
+        <div class="tomorrow-msg">${
+          tUv&&(tUv.lv==='bad'||tUv.lv==='verybad')
+            ? '明日はUVが強い予報です。今夜のうちにビタミンC美容液でアフターケアを仕込んでおくと、明日のダメージを軽減できますよ☀️'
+            : tPm&&(tPm.lv==='bad'||tPm.lv==='verybad')
+            ? '明日はPM2.5が多い予報です。外出前にバリアクリームで肌を保護しておくと、汚れが付着しにくくなりますよ🌿'
+            : '明日も今日のケアを続けてみてください。毎日の積み重ねが水光肌への近道です🌸'
+        }</div>
+      </div>
+    `;
+  }
+
+  document.getElementById('main').innerHTML=`
+    <div class="weather-head">
+      <div class="weather-head-top">
+        <div class="weather-head-left">
+          <div class="weather-icon-big">${emoji}</div>
+          <div class="weather-desc">${desc}</div>
+        </div>
+        <div class="weather-head-right">
+          <div class="temp-main">${Math.round(temp)}<span style="font-size:22px">°</span></div>
+          <div class="weather-sub-stats">
+            <span>湿度 ${humidity}%</span>
+            <span class="stat-sep">·</span>
+            <span>↓${Math.round(tempMin)}° / ↑${Math.round(tempMax)}°</span>
+          </div>
+        </div>
+      </div>
+      <div class="weather-condition-bar">${
+        Math.abs(tempMax-tempMin)>=10
+          ? `🌡 寒暖差${Math.round(tempMax-tempMin)}℃ — バリア機能が乱れやすく透明感・水光肌が崩れやすい日。保湿を重点的に。`
+          : temp>=28
+          ? `🌡 高温${Math.round(temp)}℃ — 汗で皮脂バランスが乱れ毛穴詰まり・くすみが起きやすい。帰宅後の洗顔と保湿でリセットを。`
+          : temp<=10
+          ? `🌡 低温${Math.round(temp)}℃ — 血行が悪くなりくすみ・色ムラが出やすい。ホットタオルや温感マッサージで血色ケアを。`
+          : `🌡 ${Math.round(temp)}℃ — 過ごしやすい気温。美容液や集中ケアの浸透も良好なスペシャルケア日和。`
+      }</div>
+    </div>
+
+    <div class="skin-score-card">
+      <div class="score-header">
+        <div class="score-title">今日の肌コンディション</div>
+        <div class="score-badge">${score}<small>/100</small></div>
+      </div>
+      <div class="score-meter"><div class="score-fill" id="score-fill" style="width:0%"></div></div>
+      <div class="cond-label" style="color:${cond.color};font-size:13px;font-weight:500;margin:8px 0 6px">${cond.label}</div>
+      <div class="score-msg">${cond.msg}</div>
+    </div>
+
+    <div class="index-grid">
+      <div class="index-card" data-emoji="💧">
+        <div class="index-label">乾燥指数</div>
+        <div class="index-value">${humidity}<span class="index-unit">%</span></div>
+        <div class="index-level lv-${dry.lv}">${dry.label}</div>
+        <div class="index-tip">${dry.tip}</div>
+        ${dry.detail?`<div class="index-detail">${dry.detail}</div>`:''}
+      </div>
+      <div class="index-card" data-emoji="☀️">
+        <div class="index-label">UV指数（体感）</div>
+        <div class="index-value">${adjUvi.toFixed(1)}</div>
+        <div class="index-level lv-${uv.lv}">${uv.label}</div>
+        <div class="index-tip">${uv.tip}</div>
+      </div>
+      <div class="index-card" data-emoji="🌸">
+        <div class="index-label">花粉</div>
+        <div class="index-value" style="font-size:24px;margin-bottom:8px">${pol.label}</div>
+        <div class="index-level lv-${pol.lv}">${pol.label}</div>
+        <div class="index-tip">${pol.tip}</div>
+        ${pol.detail?`<div class="index-detail">${pol.detail}</div>`:''}
+      </div>
+      <div class="index-card" data-emoji="🌫">
+        <div class="index-label">PM2.5 / AQI</div>
+        <div class="index-value">${aqi}</div>
+        <div class="index-level lv-${pm.lv}">${pm.label}</div>
+        <div class="index-tip">${pm.tip}</div>
+      </div>
+    </div>
+
+    <div class="advice-card">
+      <div class="advice-title">今日のスキンケアアドバイス</div>
+      <div class="advice-time-note">現在 ${h}時台のあなたへ</div>
+      <div class="advice-list">
+        ${advice.map((a,i)=>`
+          <div class="advice-item">
+            <div class="advice-icon">${a.icon}</div>
+            <div class="advice-text">
+              <div class="advice-time-label">${a.time}</div>
+              <div>${a.text}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    ${tomorrowHtml}
+
+    <div class="salon-banner" onclick="alert('予約URLをここに設定してください')">
+      <div class="salon-banner-icon">🌸</div>
+      <div class="salon-banner-text">
+        <p>NEXT VISIT</p>
+        <h3>予約はこちら</h3>
+        <small>定期的なサロンケアが、理想の肌への近道です🌸</small>
+      </div>
+      <div class="salon-banner-arrow">›</div>
+    </div>
+    <div class="update-note">最終更新 ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')} ・ ${city}の気象情報</div>
+  `;
+  setTimeout(()=>{ const el=document.getElementById('score-fill'); if(el)el.style.width=score+'%'; },100);
+}
+
+function showError(msg){
+  document.getElementById('main').innerHTML=`<div class="error-box"><p>${msg}</p><button class="retry-btn" onclick="location.reload()">もう一度試す</button></div>`;
+}
+
+// ── 起動時の処理 ──
+// 【初回】場所選択UIを表示
+// 【2回目以降・固定なし】前回の場所で即表示（上部に「変更」ボタン）
+// 【固定あり】前回の場所で即表示・選択UIは非表示
+function init(){
+  const saved = loadSavedPref();
+  if(!saved){
+    // 初回：場所選択UIを表示
+    renderLocationUI();
+    return;
+  }
+
+  isPinFixed = saved.pinned || false;
+
+  // 前回の場所で即表示（固定あり・なし 両方）
+  if(saved.mode==='preset' && saved.idx!=null){
+    currentMode='preset'; selectedPreset=saved.idx;
+    const p=PRESETS[saved.idx];
+    fetchAndRender(p.lat, p.lon, p.label);
+  } else if(saved.mode==='search' && saved.result){
+    currentMode='search'; searchResult=saved.result;
+    fetchAndRender(saved.result.lat, saved.result.lon, saved.result.label);
+  } else if(saved.mode==='gps'){
+    currentMode='gps';
+    loadByGPS();
+  } else {
+    renderLocationUI();
+  }
+}
+
+init();
+</script>
+</body>
+</html>
